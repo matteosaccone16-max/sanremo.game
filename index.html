@@ -5,81 +5,157 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sanremo Deck-Off</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f0c29; color: white; text-align: center; margin: 0; padding: 20px; }
-        h1 { color: #ffcc00; text-transform: uppercase; text-shadow: 2px 2px #e31b23; }
-        #stats { margin-bottom: 20px; font-weight: bold; color: #00d4ff; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f0c29; color: white; text-align: center; margin: 0; padding: 10px; }
+        h1 { color: #ffcc00; text-transform: uppercase; text-shadow: 2px 2px #e31b23; margin: 10px 0; font-size: 1.5rem; }
         
-        #hand { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; perspective: 1000px; }
+        /* Contatore Gettoni */
+        #token-container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px; border-radius: 50px;
+            display: inline-flex; align-items: center; gap: 15px;
+            margin-bottom: 20px; border: 2px solid #ffcc00;
+        }
+        .token-count { font-size: 1.8rem; font-weight: bold; color: #ffcc00; }
+        .token-btn { 
+            background: #ffcc00; border: none; width: 40px; height: 40px; 
+            border-radius: 50%; font-size: 1.5rem; font-weight: bold; cursor: pointer;
+        }
+
+        #stats { margin-bottom: 15px; font-size: 0.9rem; color: #00d4ff; font-weight: bold; }
+        #hand { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
         
         .card {
-            width: 160px; height: 240px;
+            width: 145px; height: 210px;
             background: linear-gradient(135deg, #6e8efb, #a777e3);
-            border-radius: 12px; border: 3px solid #fff;
-            color: #000; padding: 15px;
+            border-radius: 12px; border: 2px solid #fff;
+            color: #000; padding: 10px;
             display: flex; flex-direction: column; justify-content: center;
-            cursor: pointer; transition: transform 0.3s, box-shadow 0.3s;
-            font-size: 0.85rem; font-weight: bold; overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            cursor: pointer; transition: transform 0.2s;
+            font-size: 0.8rem; font-weight: bold; overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             line-height: 1.2;
         }
         
-        .card:hover { transform: translateY(-10px) rotate(2deg); box-shadow: 0 10px 25px rgba(255, 204, 0, 0.5); }
-        .card:active { transform: scale(0.9); }
+        .card:active { transform: scale(0.95); }
 
-        button {
+        .controls { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+        button.main-btn {
             padding: 12px 24px; font-size: 1rem; cursor: pointer;
-            background: #e31b23; color: white; border: none; border-radius: 5px; margin-top: 20px;
-            font-weight: bold;
+            background: #e31b23; color: white; border: none; border-radius: 5px; font-weight: bold;
         }
     </style>
 </head>
 <body>
 
     <h1>🎙️ Sanremo Deck-Off</h1>
-    <div id="stats">Carte nel mazzo: <span id="count">0</span></div>
+
+    <div id="token-container">
+        <button class="token-btn" onclick="changeTokens(-1)">-</button>
+        <div class="token-count">🌸 <span id="token-val">3</span></div>
+        <button class="token-btn" onclick="changeTokens(1)">+</button>
+    </div>
+
+    <div id="stats">Mazzo: <span id="count">0</span> carte</div>
     
     <div id="hand"></div>
 
-    <button onclick="resetGame()">Ricomincia Gioco</button>
+    <div class="controls">
+        <button class="main-btn" onclick="resetGame()">🔄 Ricarica Mazzo</button>
+    </div>
 
     <script>
-        // Carico l'effetto sonoro (Royalty Free Clinking Glasses)
+        // Effetto sonoro brindisi
         const toastSound = new Audio('https://www.soundjay.com/misc/sounds/glass-clink-1.mp3');
-
-        const allCards = [
-            "L'Emozionato: Gioca se credi che il cantante piangerà a fine esibizione. Successo: Vinci 1 Gettone. Insuccesso: Bevi 2 sorsi.",
-            "Fiori Rubati: Gioca se il cantante regala i fiori a qualcuno in platea o all'orchestra. Premio: Guadagni 1 'Scudo' (salta la prossima bevuta).",
-            "Occhiale matto: Gioca se credi che il prossimo artista indossi occhiali da sole. Successo: Guadagni 1 gettone.",
-            "Appello Sociale: Gioca se il cantante fa un discorso politico o sociale. Effetto: Tutti devono bere un sorso solenne.",
-            "L'Invasione: Gioca se il cantante scende tra il pubblico. Successo: Distribuisci 3 sorsi tra i tuoi amici.",
-            "Standing Ovation: Gioca prima dell'annuncio. Bevono tutti tranne te se l'Ariston si alza in piedi. Vinci 2 Gettoni.",
-            "Problema di Monitor: Gioca se il cantante si tocca l'orecchio (problemi audio). Successo: Guadagni 1 Gettone e tutti bevono.",
-            "L'Urlo Finale: Gioca se la canzone finisce con un acuto di almeno 5 secondi. Bevono tutti e guadagni 1 gettone.",
-            "Gaffe sul Nome: Il conduttore sbaglia a pronunciare il nome di un cantante. Successo: Tutti bevono tranne te. Guadagni 1 gettone.",
-            "Selfie di Stato: Il conduttore tira fuori il telefono per una storia o selfie. Effetto: Guadagni 1 gettone. Chi ha meno gettoni beve.",
-            "Amadeus-Mode: Gioca se fa una battuta che non fa ridere. Scommessa: Se cala il silenzio, guadagni 2 Gettoni. Se qualcuno ride beve doppio.",
-            "Discesa Pericolosa: Gioca se qualcuno inciampa o rischia di cadere dalle scale. Premio: 1 Gettone 'Salva-Vita'.",
-            "Codice Errato: Il conduttore legge il codice del televoto sbagliato. Successo: Fai bere 3 sorsi a chi vuoi.",
-            "Incursione: Qualcuno interrompe il conduttore. Effetto: Tutti bevono alla salute del disturbatore. Guadagni 1 gettone salva vita.",
-            "Monologo Infinito: Inizia un monologo di oltre 5 minuti. Effetto: Guadagni 2 gettoni e bevono tutti per sopportare lo strazio.",
-            "Canto del Conduttore: Il conduttore inizia a cantare. Effetto: Guadagna 1 gettone e decidi a chi togliere 1 salva vita. Bevono tutti.",
-            "Balli Imbarazzanti: Il conduttore costringe l'ospite a un ballo di gruppo. Effetto: Guadagni 1 gettone e tutti devono ballare; chi rifiuta beve.",
-            "Medley Eterno: L'ospite canta più di 4 canzoni di fila. Effetto: Guadagni 3 gettoni, tutti bevono un sorso per canzone.",
-            "Duetto Improvvisato: Conduttore e ospite cantano insieme. Guadagni 2 gettoni e tutti tranne te bevono.",
-            "Microfono Muto: Un cantante inizia a cantare ma non si sente la voce. Premio: Guadagni 2 Gettoni e 1 salva vita. Tutti bevono.",
-            "Parenti in Prima Fila: La regia inquadra la moglie/figlio del conduttore. Effetto: Bevi un sorso con la persona alla tua destra. Togli 1 gettone a chi vuoi.",
-            "Omaggio ai Grandi Scomparsi: Parte una clip tributo a un artista del passato. Regola: Brindisi collettivo. Scegli 2 persone a cui togliere 1 gettone.",
-            "L'Urlo 'Sanremooo!': Il cantante urla il nome della città. Effetto: Tutti bevono uno shot. Guadagna 1 gettone salva vita.",
-            "Ultimo Posto Orgoglioso: Il cantante all'ultimo posto sorride. Effetto: Il giocatore con meno Gettoni beve e perde un gettone.",
-            "Boati di Dissenso: Il pubblico fischia la classifica. Effetto: Guadagni 2 gettoni. Fischia anche tu; chi non lo fa beve 2 sorsi.",
-            "Coro Impegnato: I coristi fanno un balletto coordinato. Effetto: Guadagni 2 gettoni e bevono quelli che non copiano il balletto.",
-            "Lingua Straniera: L'ospite parla una lingua straniera. Effetto: Guadagni 1 gettone e tutti bevono."
-        ];
-
+        
+        let tokens = 3;
         let deck = [];
         let hand = [];
 
+        // Tutte le tue carte senza errori di virgolette
+        const allCards = [
+            "L'Emozionato: Se il cantante piange a fine esibizione: Vinci 1 Gettone. Se no: Bevi 2 sorsi.",
+            "Fiori Rubati: Se il cantante regala i fiori a qualcuno: Guadagni 1 'Scudo' (salta la prossima bevuta).",
+            "Occhiale matto: Se il prossimo artista indossa occhiali da sole: Guadagni 1 gettone.",
+            "Appello Sociale: Se il cantante fa un discorso politico o sociale: Tutti bevono un sorso solenne.",
+            "L'Invasione: Se il cantante scende tra il pubblico: Distribuisci 3 sorsi tra gli amici.",
+            "Standing Ovation: Se l'Ariston si alza in piedi: Bevono tutti tranne te. Vinci 2 Gettoni.",
+            "Problema di Monitor: Se il cantante si tocca l'orecchio: Guadagni 1 Gettone e tutti bevono.",
+            "L'Urlo Finale: Se la canzone finisce con un acuto di +5 secondi: Bevono tutti e guadagni 1 gettone.",
+            "Gaffe sul Nome: Il conduttore sbaglia un nome: Tutti bevono tranne te. +1 gettone.",
+            "Selfie di Stato: Il conduttore fa un selfie: +1 gettone. Chi ha meno gettoni beve.",
+            "Amadeus-Mode: Se fa una battuta che non fa ridere: Silenzio = +2 gettoni. Se qualcuno ride: beve doppio.",
+            "Discesa Pericolosa: Se qualcuno inciampa sulle scale: Vinci 1 Gettone 'Salva-Vita'.",
+            "Codice Errato: Il conduttore legge il codice televoto sbagliato: Fai bere 3 sorsi a chi vuoi.",
+            "Incursione: Qualcuno interrompe il conduttore: Tutti bevono. Guadagni 1 gettone salva vita.",
+            "Monologo Infinito: Monologo di oltre 5 minuti: +2 gettoni e bevono tutti per sopportare.",
+            "Canto del Conduttore: Il conduttore canta: +1 gettone e togli 1 salva vita a un amico. Si beve!",
+            "Balli Imbarazzanti: Ballo di gruppo forzato: +1 gettone e tutti ballano; chi rifiuta beve shot.",
+            "Medley Eterno: L'ospite canta +4 canzoni: +3 gettoni, tutti bevono un sorso per canzone.",
+            "Duetto Improvvisato: Conduttore e ospite cantano insieme: +2 gettoni e tutti tranne te bevono.",
+            "Microfono Muto: Non si sente la voce all'inizio: +2 Gettoni e 1 salva vita. Tutti bevono.",
+            "Parenti in Prima Fila: Inquadrano la famiglia del conduttore: Bevi con chi hai a destra. Togli 1 gettone a un nemico.",
+            "Omaggio ai Scomparsi: Clip tributo: Brindisi collettivo. Scegli 2 persone a cui togliere 1 gettone.",
+            "L'Urlo 'Sanremooo!': Il cantante urla il nome della città: Tutti bevono uno shot. +1 gettone salva vita.",
+            "Ultimo Posto: Il cantante all'ultimo posto sorride: Chi ha meno Gettoni beve e ne perde uno.",
+            "Boati di Dissenso: Il pubblico fischia la classifica: +2 gettoni. Chi non fischia beve 2 sorsi.",
+            "Coro Impegnato: I coristi fanno un balletto: +2 gettoni e bevono quelli che non copiano i passi.",
+            "Lingua Straniera: L'ospite parla una lingua straniera: +1 gettone e tutti bevono."
+        ];
+
+        function changeTokens(val) {
+            tokens = Math.max(0, tokens + val);
+            document.getElementById('token-val').innerText = tokens;
+        }
+
         function shuffle(array) {
             return array.sort(() => Math.random() - 0.5);
-
         }
+
+        function initGame() {
+            deck = shuffle([...allCards]);
+            hand = [];
+            tokens = 3;
+            document.getElementById('token-val').innerText = tokens;
+            for(let i=0; i<5; i++) {
+                if(deck.length > 0) hand.push(deck.pop());
+            }
+            renderHand();
+        }
+
+        function playCard(index) {
+            toastSound.currentTime = 0;
+            toastSound.play().catch(e => console.log("Audio richiede interazione"));
+            
+            if (deck.length > 0) {
+                hand[index] = deck.pop();
+            } else {
+                hand.splice(index, 1);
+                if (hand.length === 0) alert("Mazzo esaurito!");
+            }
+            renderHand();
+        }
+
+        function renderHand() {
+            const handDiv = document.getElementById('hand');
+            const countSpan = document.getElementById('count');
+            handDiv.innerHTML = '';
+            countSpan.innerText = deck.length;
+
+            hand.forEach((cardText, index) => {
+                const cardEl = document.createElement('div');
+                cardEl.className = 'card';
+                cardEl.innerText = cardText;
+                cardEl.onclick = () => playCard(index);
+                handDiv.appendChild(cardEl);
+            });
+        }
+
+        function resetGame() {
+            if(confirm("Vuoi azzerare tutto e rimescolare?")) initGame();
+        }
+
+        // Avvio del gioco
+        initGame();
+    </script>
+</body>
+</html>
